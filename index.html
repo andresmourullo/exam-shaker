@@ -142,7 +142,7 @@
 
           const { shuffled } = shuffleOptions(optTexts, correctText);
 
-          updatedLines.push(question);
+          updatedLines.push(question.split("A.")[0].trim());
 
           for (let j = 0; j < 4; j++) {
             updatedLines.push(`${optLabels[j]}. ${shuffled[j]}`);
@@ -156,7 +156,7 @@
         }
       }
 
-      console.log("Nuevas respuestas:", updatedAnswersMap);
+      updatedLines.push(JSON.stringify(updatedAnswersMap));
       return updatedLines.join('\n');
     }
 
