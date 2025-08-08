@@ -132,7 +132,7 @@
         if (match) {
           currentQuestion++;
           const correctLetter = answersMap[currentQuestion];
-          const question = line;
+          const question = currentQuestion.toString() + '. ' + line;
 
           const opts = extractOptions(line);
           const optLabels = ['A', 'B', 'C', 'D'];
@@ -147,7 +147,6 @@
           for (let j = 0; j < 4; j++) {
             updatedLines.push(`${optLabels[j]}. ${shuffled[j]}`);
             if (shuffled[j] === correctText) {
-              // Guardar la nueva letra correcta
               updatedAnswersMap[currentQuestion] = optLabels[j];
             }
           }
