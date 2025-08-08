@@ -1,0 +1,201 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <title>Mezclador de Examen DOCX</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      padding: 20px;
+      background: #f8f9fa;
+    }
+
+    h1 {
+      text-align: center;
+      color: #333;
+    }
+
+    .form-section {
+      margin: 20px 0;
+      text-align: center;
+    }
+
+    label {
+      display: block;
+      margin: 10px 0 5px;
+      font-weight: bold;
+    }
+
+    input[type="file"] {
+      padding: 10px;
+      font-size: 14px;
+    }
+
+    button {
+      margin-top: 20px;
+      padding: 10px 25px;
+      font-size: 16px;
+      background-color: #007bff;
+      color: white;
+      border: none;
+      border-radius: 5px;
+      cursor: pointer;
+    }
+
+    button:hover {
+      background-color: #0056b3;
+    }
+
+    #download-link {
+      display: none;
+      text-align: center;
+      margin-top: 20px;
+      color: #007bff;
+      font-weight: bold;
+    }
+  </style>
+</head>
+<body>
+  <h1>Mezclador de Examen DOCX</h1>
+
+  <div class="form-section">
+    <label for="exam-file">Archivo del Examen (.docx)</label>
+    <input type="file" id="exam-file" accept=".docx">
+  </div>
+
+  <div class="form-section">
+    <label for="answers-file">Archivo de Respuestas (.docx)</label>
+    <input type="file" id="answers-file" accept=".docx">
+  </div>
+
+  <div class="form-section">
+    <button id="mix-button">Mezclar</button>
+    <a id="download-link" download="examen_mezclado.txt">📥 Descargar examen mezclado</a>
+  </div>
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/docx/8.1.0/docx.umd.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/mammoth/1.5.1/mammoth.browser.min.js"></script>
+  <script>
+    let examText = "";
+    let answersText = "";
+    let answersMap = {};
+
+    function parseAnswers(text) {
+      const regex = /\b(\d+)\.\s*([ABCD])/g;
+      let match;
+      while ((match = regex.exec(text)) !== null) {
+        answersMap[match[1]] = match[2];
+      }
+    }
+
+    function shuffleOptions(options, correct) {
+      const shuffled = [...options].sort(() => Math.random() - 0.5);
+      return { shuffled, correctIndex: shuffled.indexOf(correct) };
+    }
+
+    function extractOptions(text) {
+      const regex = /(A\. |B\. |C\. |D\. )/g;
+      const indices = [];
+      let match;
+
+      // Guardamos índices donde aparecen A., B., C., D.
+      while ((match = regex.exec(text)) !== null) {
+        indices.push({ index: match.index, label: match[1] });
+      }
+
+      const options = [];
+
+      for (let i = 0; i < indices.length; i++) {
+        const start = indices[i].index;
+        const end = i + 1 < indices.length ? indices[i + 1].index : text.length;
+        const optionText = text.substring(start, end).trim();
+        options.push(optionText);
+      }
+
+      return options;
+    }
+
+    function updateExamContent(text) {
+      const lines = text.split(/\r?\n/);
+      const updatedLines = [];
+      const updatedAnswersMap = {};
+      let currentQuestion = 0;
+      for (let i = 0; i < lines.length; i++) {
+        const line = lines[i];
+        const match = (
+          line.includes("A. ") &&
+          line.includes("B. ") &&
+          line.includes("C. ") &&
+          line.includes("D. ")
+        );
+
+        if (match) {
+          currentQuestion++;
+          const correctLetter = answersMap[currentQuestion];
+          const question = line;
+
+          const opts = extractOptions(line);
+          const optLabels = ['A', 'B', 'C', 'D'];
+          const optTexts = opts.map(opt => opt.substring(3));
+          const correctIndex = optLabels.indexOf(correctLetter);
+          const correctText = optTexts[correctIndex];
+
+          const { shuffled } = shuffleOptions(optTexts, correctText);
+
+          updatedLines.push(question);
+
+          for (let j = 0; j < 4; j++) {
+            updatedLines.push(`${optLabels[j]}. ${shuffled[j]}`);
+            if (shuffled[j] === correctText) {
+              // Guardar la nueva letra correcta
+              updatedAnswersMap[currentQuestion] = optLabels[j];
+            }
+          }
+        } else {
+          updatedLines.push(line);
+        }
+      }
+
+      console.log("Nuevas respuestas:", updatedAnswersMap);
+      return updatedLines.join('\n');
+    }
+
+    function handleFileInput(input, callback) {
+      const file = input.files[0];
+      if (file && file.name.endsWith(".docx")) {
+        const reader = new FileReader();
+        reader.onload = function(event) {
+          mammoth.extractRawText({ arrayBuffer: event.target.result })
+            .then(result => callback(result.value));
+        };
+        reader.readAsArrayBuffer(file);
+      }
+    }
+
+    document.getElementById("mix-button").addEventListener("click", () => {
+      const examInput = document.getElementById("exam-file");
+      const answersInput = document.getElementById("answers-file");
+
+      if (!examInput.files.length || !answersInput.files.length) {
+        alert("Por favor, selecciona ambos archivos.");
+        return;
+      }
+
+      handleFileInput(answersInput, text => {
+        answersText = text;
+        parseAnswers(answersText);
+
+        handleFileInput(examInput, text => {
+          examText = text;
+          const newText = updateExamContent(examText);
+          const blob = new Blob([newText], { type: "text/plain" });
+          const url = URL.createObjectURL(blob);
+          const link = document.getElementById("download-link");
+          link.href = url;
+          link.style.display = "inline-block";
+        });
+      });
+    });
+  </script>
+</body>
+</html>
