@@ -1,0 +1,228 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<title>Examen Interactivo</title>
+<style>
+    body {
+        font-family: Arial, sans-serif;
+        margin: 20px;
+        background: #f9f9f9;
+    }
+    h1 {
+        text-align: center;
+    }
+    #dropZone {
+        border: 2px dashed #999;
+        padding: 30px;
+        text-align: center;
+        color: #555;
+        margin-bottom: 20px;
+        background: #fff;
+    }
+    #convertir {
+        display: block;
+        margin: 10px auto;
+        padding: 10px 20px;
+        background: #28a745;
+        color: white;
+        border: none;
+        cursor: pointer;
+        font-size: 16px;
+        border-radius: 5px;
+    }
+    #convertir:disabled {
+        background: #ccc;
+        cursor: not-allowed;
+    }
+    .pregunta {
+        background: #fff;
+        padding: 20px;
+        border-radius: 8px;
+        margin-bottom: 20px;
+        box-shadow: 0 0 5px rgba(0,0,0,0.1);
+    }
+    .opcion {
+        display: block;
+        margin: 8px 0;
+        padding: 10px;
+        border: 1px solid #ccc;
+        border-radius: 5px;
+        background: #f5f5f5;
+        cursor: pointer;
+    }
+    .opcion:hover {
+        background: #eaeaea;
+    }
+    #resultado {
+        font-weight: bold;
+        margin-top: 10px;
+    }
+    #siguiente {
+        margin-top: 15px;
+        padding: 10px 20px;
+        background: #007bff;
+        color: white;
+        border: none;
+        cursor: pointer;
+        border-radius: 5px;
+    }
+</style>
+</head>
+<body>
+
+<h1>Examen Interactivo</h1>
+
+<div id="dropZone">Arrastra aquí tu archivo .txt o haz clic para seleccionarlo
+    <input type="file" id="fileInput" style="display:none" accept=".txt">
+</div>
+
+<button id="convertir" disabled>Convertir</button>
+
+<div id="examen"></div>
+
+<script>
+let preguntas = [];
+let respuestasCorrectas = {};
+let indiceActual = 0;
+let aciertos = 0;
+
+const dropZone = document.getElementById('dropZone');
+const fileInput = document.getElementById('fileInput');
+const convertirBtn = document.getElementById('convertir');
+const examenDiv = document.getElementById('examen');
+
+// Eventos drag & drop
+dropZone.addEventListener('click', () => fileInput.click());
+dropZone.addEventListener('dragover', e => {
+    e.preventDefault();
+    dropZone.style.background = '#eef';
+});
+dropZone.addEventListener('dragleave', () => {
+    dropZone.style.background = '#fff';
+});
+dropZone.addEventListener('drop', e => {
+    e.preventDefault();
+    dropZone.style.background = '#fff';
+    const file = e.dataTransfer.files[0];
+    leerArchivo(file);
+});
+fileInput.addEventListener('change', e => {
+    leerArchivo(e.target.files[0]);
+});
+
+function leerArchivo(file) {
+    const reader = new FileReader();
+    reader.onload = function(e) {
+        parsearTexto(e.target.result);
+        convertirBtn.disabled = false;
+    };
+    reader.readAsText(file, 'UTF-8');
+}
+
+function parsearTexto(texto) {
+    // Cortar todo antes de "1. "
+    const inicio = texto.indexOf("1.");
+    if (inicio !== -1) {
+        texto = texto.slice(inicio);
+    }
+
+    // Buscar el JSON de respuestas (y guardarlo)
+    let jsonMatch = texto.match(/\{[\s\S]*\}$/);
+    if (jsonMatch) {
+        respuestasCorrectas = JSON.parse(jsonMatch[0]);
+        texto = texto.replace(jsonMatch[0], '');
+    }
+
+    // Dividir en bloques y detenernos si no hay 4 opciones
+    let partes = texto.split(/\n\s*\n/).filter(l => l.trim() !== '');
+    let preguntasFiltradas = [];
+
+    for (let bloque of partes) {
+        let lineas = bloque.split('\n').filter(l => l.trim() !== '');
+        if (lineas.length >= 5 &&
+            lineas[1].startsWith('A.') &&
+            lineas[2].startsWith('B.') &&
+            lineas[3].startsWith('C.') &&
+            lineas[4].startsWith('D.')
+        ) {
+            preguntasFiltradas.push(bloque);
+        } else {
+            break;
+        }
+    }
+
+    preguntas = preguntasFiltradas.map(bloque => {
+        const lineas = bloque.split('\n').filter(l => l.trim() !== '');
+        const enunciado = lineas[0];
+        const opciones = lineas.slice(1);
+        return { enunciado, opciones };
+    });
+}
+
+convertirBtn.addEventListener('click', () => {
+    indiceActual = 0;
+    aciertos = 0;
+    mostrarPregunta();
+});
+
+function mostrarPregunta() {
+    examenDiv.innerHTML = '';
+    if (indiceActual >= preguntas.length) {
+        const total = preguntas.length;
+        const porcentaje = ((aciertos / total) * 100).toFixed(2);
+        examenDiv.innerHTML = `<h2>Examen finalizado</h2>
+                               <p>Has acertado <strong>${aciertos}</strong> de ${total} preguntas (${porcentaje}%).</p>`;
+        return;
+    }
+    const p = preguntas[indiceActual];
+    const cont = document.createElement('div');
+    cont.className = 'pregunta';
+
+    const enunciado = document.createElement('h3');
+    enunciado.textContent = p.enunciado;
+    cont.appendChild(enunciado);
+
+    p.opciones.forEach(op => {
+        const btn = document.createElement('div');
+        btn.className = 'opcion';
+        btn.textContent = op;
+        btn.onclick = () => verificarRespuesta(op.charAt(0));
+        cont.appendChild(btn);
+    });
+
+    const resultado = document.createElement('div');
+    resultado.id = 'resultado';
+    cont.appendChild(resultado);
+
+    const siguienteBtn = document.createElement('button');
+    siguienteBtn.id = 'siguiente';
+    siguienteBtn.textContent = 'Siguiente';
+    siguienteBtn.style.display = 'none';
+    siguienteBtn.onclick = () => {
+        indiceActual++;
+        mostrarPregunta();
+    };
+    cont.appendChild(siguienteBtn);
+
+    examenDiv.appendChild(cont);
+}
+
+function verificarRespuesta(opcionSeleccionada) {
+    const correcta = respuestasCorrectas[(indiceActual+1).toString()];
+    const resultadoDiv = document.getElementById('resultado');
+    if (opcionSeleccionada === correcta) {
+        resultadoDiv.textContent = '✅ ¡Correcto!';
+        resultadoDiv.style.color = 'green';
+        aciertos++;
+    } else {
+        resultadoDiv.textContent = `❌ Incorrecto. La respuesta correcta era: ${correcta}`;
+        resultadoDiv.style.color = 'red';
+    }
+    document.querySelectorAll('.opcion').forEach(o => o.style.pointerEvents = 'none');
+    document.getElementById('siguiente').style.display = 'inline-block';
+}
+</script>
+
+</body>
+</html>
