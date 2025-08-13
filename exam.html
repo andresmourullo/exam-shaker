@@ -90,8 +90,18 @@ function parsearTexto(texto) {
         console.log("[parsearTexto] Respuestas correctas extraídas:", respuestasCorrectas);
     }
 
-    console.log("[parsearTexto] Dividiendo preguntas por patrón de D.");
-    let partes = texto.match(/.*?\nA\..*?\nB\..*?\nC\..*?\nD\..*?(?=\n\d+\.|$)/gs) || [];
+    console.log("[parsearTexto] Dividiendo preguntas por línea que empieza con D.");
+    let partes = texto
+        .split(/\n(?=D\.)/) // cortamos justo antes de cada D.
+        .map((bloque, i, arr) => {
+            // Si no es el último, lo unimos con la parte anterior
+            if (i > 0) {
+                arr[i - 1] += "\n" + bloque;
+                return null; // este bloque ya se unió, así que lo descartamos
+            }
+            return bloque;
+        })
+        .filter(Boolean); // eliminamos los null
     console.log("[parsearTexto] Total bloques encontrados:", partes.length);
     let preguntasFiltradas = [];
 
