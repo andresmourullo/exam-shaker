@@ -4,69 +4,16 @@
 <meta charset="UTF-8">
 <title>Examen Interactivo</title>
 <style>
-    body {
-        font-family: Arial, sans-serif;
-        margin: 20px;
-        background: #f9f9f9;
-    }
-    h1 {
-        text-align: center;
-    }
-    #dropZone {
-        border: 2px dashed #999;
-        padding: 30px;
-        text-align: center;
-        color: #555;
-        margin-bottom: 20px;
-        background: #fff;
-    }
-    #convertir {
-        display: block;
-        margin: 10px auto;
-        padding: 10px 20px;
-        background: #28a745;
-        color: white;
-        border: none;
-        cursor: pointer;
-        font-size: 16px;
-        border-radius: 5px;
-    }
-    #convertir:disabled {
-        background: #ccc;
-        cursor: not-allowed;
-    }
-    .pregunta {
-        background: #fff;
-        padding: 20px;
-        border-radius: 8px;
-        margin-bottom: 20px;
-        box-shadow: 0 0 5px rgba(0,0,0,0.1);
-    }
-    .opcion {
-        display: block;
-        margin: 8px 0;
-        padding: 10px;
-        border: 1px solid #ccc;
-        border-radius: 5px;
-        background: #f5f5f5;
-        cursor: pointer;
-    }
-    .opcion:hover {
-        background: #eaeaea;
-    }
-    #resultado {
-        font-weight: bold;
-        margin-top: 10px;
-    }
-    #siguiente {
-        margin-top: 15px;
-        padding: 10px 20px;
-        background: #007bff;
-        color: white;
-        border: none;
-        cursor: pointer;
-        border-radius: 5px;
-    }
+    body { font-family: Arial, sans-serif; margin: 20px; background: #f9f9f9; }
+    h1 { text-align: center; }
+    #dropZone { border: 2px dashed #999; padding: 30px; text-align: center; color: #555; margin-bottom: 20px; background: #fff; }
+    #convertir { display: block; margin: 10px auto; padding: 10px 20px; background: #28a745; color: white; border: none; cursor: pointer; font-size: 16px; border-radius: 5px; }
+    #convertir:disabled { background: #ccc; cursor: not-allowed; }
+    .pregunta { background: #fff; padding: 20px; border-radius: 8px; margin-bottom: 20px; box-shadow: 0 0 5px rgba(0,0,0,0.1); }
+    .opcion { display: block; margin: 8px 0; padding: 10px; border: 1px solid #ccc; border-radius: 5px; background: #f5f5f5; cursor: pointer; }
+    .opcion:hover { background: #eaeaea; }
+    #resultado { font-weight: bold; margin-top: 10px; }
+    #siguiente { margin-top: 15px; padding: 10px 20px; background: #007bff; color: white; border: none; cursor: pointer; border-radius: 5px; }
 </style>
 </head>
 <body>
@@ -93,7 +40,10 @@ const convertirBtn = document.getElementById('convertir');
 const examenDiv = document.getElementById('examen');
 
 // Eventos drag & drop
-dropZone.addEventListener('click', () => fileInput.click());
+dropZone.addEventListener('click', () => {
+    console.log("[Evento] Click en dropZone → Abriendo selector de archivo");
+    fileInput.click();
+});
 dropZone.addEventListener('dragover', e => {
     e.preventDefault();
     dropZone.style.background = '#eef';
@@ -104,37 +54,42 @@ dropZone.addEventListener('dragleave', () => {
 dropZone.addEventListener('drop', e => {
     e.preventDefault();
     dropZone.style.background = '#fff';
+    console.log("[Evento] Archivo soltado en dropZone");
     const file = e.dataTransfer.files[0];
     leerArchivo(file);
 });
 fileInput.addEventListener('change', e => {
+    console.log("[Evento] Archivo seleccionado desde diálogo");
     leerArchivo(e.target.files[0]);
 });
 
 function leerArchivo(file) {
+    console.log("[leerArchivo] Leyendo archivo:", file.name);
     const reader = new FileReader();
     reader.onload = function(e) {
+        console.log("[leerArchivo] Archivo leído, tamaño:", e.target.result.length, "bytes");
         parsearTexto(e.target.result);
         convertirBtn.disabled = false;
+        console.log("[leerArchivo] Botón Convertir habilitado");
     };
     reader.readAsText(file, 'UTF-8');
 }
 
 function parsearTexto(texto) {
-    // Cortar todo antes de "1. "
+    console.log("[parsearTexto] Inicio del parseo de texto");
     const inicio = texto.indexOf("1.");
     if (inicio !== -1) {
         texto = texto.slice(inicio);
+        console.log("[parsearTexto] Recortado texto antes de la primera pregunta");
     }
 
-    // Buscar el JSON de respuestas (y guardarlo)
     let jsonMatch = texto.match(/\{[\s\S]*\}$/);
     if (jsonMatch) {
         respuestasCorrectas = JSON.parse(jsonMatch[0]);
         texto = texto.replace(jsonMatch[0], '');
+        console.log("[parsearTexto] Respuestas correctas extraídas:", respuestasCorrectas);
     }
 
-    // Dividir en bloques y detenernos si no hay 4 opciones
     let partes = texto.split(/\n\s*\n/).filter(l => l.trim() !== '');
     let preguntasFiltradas = [];
 
@@ -148,29 +103,33 @@ function parsearTexto(texto) {
         ) {
             preguntasFiltradas.push(bloque);
         } else {
+            console.log("[parsearTexto] Bloque inválido detectado, deteniendo parseo");
             break;
         }
     }
 
     preguntas = preguntasFiltradas.map(bloque => {
         const lineas = bloque.split('\n').filter(l => l.trim() !== '');
-        const enunciado = lineas[0];
-        const opciones = lineas.slice(1);
-        return { enunciado, opciones };
+        return { enunciado: lineas[0], opciones: lineas.slice(1) };
     });
+
+    console.log("[parsearTexto] Total preguntas cargadas:", preguntas.length);
 }
 
 convertirBtn.addEventListener('click', () => {
+    console.log("[convertir] Iniciando examen");
     indiceActual = 0;
     aciertos = 0;
     mostrarPregunta();
 });
 
 function mostrarPregunta() {
+    console.log(`[mostrarPregunta] Mostrando pregunta ${indiceActual + 1} de ${preguntas.length}`);
     examenDiv.innerHTML = '';
     if (indiceActual >= preguntas.length) {
         const total = preguntas.length;
         const porcentaje = ((aciertos / total) * 100).toFixed(2);
+        console.log("[mostrarPregunta] Examen finalizado");
         examenDiv.innerHTML = `<h2>Examen finalizado</h2>
                                <p>Has acertado <strong>${aciertos}</strong> de ${total} preguntas (${porcentaje}%).</p>`;
         return;
@@ -187,7 +146,10 @@ function mostrarPregunta() {
         const btn = document.createElement('div');
         btn.className = 'opcion';
         btn.textContent = op;
-        btn.onclick = () => verificarRespuesta(op.charAt(0));
+        btn.onclick = () => {
+            console.log(`[verificarRespuesta] Opción seleccionada: ${op.charAt(0)}`);
+            verificarRespuesta(op.charAt(0));
+        };
         cont.appendChild(btn);
     });
 
@@ -200,6 +162,7 @@ function mostrarPregunta() {
     siguienteBtn.textContent = 'Siguiente';
     siguienteBtn.style.display = 'none';
     siguienteBtn.onclick = () => {
+        console.log("[mostrarPregunta] Pasando a la siguiente pregunta");
         indiceActual++;
         mostrarPregunta();
     };
@@ -210,14 +173,17 @@ function mostrarPregunta() {
 
 function verificarRespuesta(opcionSeleccionada) {
     const correcta = respuestasCorrectas[(indiceActual+1).toString()];
+    console.log(`[verificarRespuesta] Respuesta correcta: ${correcta}`);
     const resultadoDiv = document.getElementById('resultado');
     if (opcionSeleccionada === correcta) {
         resultadoDiv.textContent = '✅ ¡Correcto!';
         resultadoDiv.style.color = 'green';
         aciertos++;
+        console.log("[verificarRespuesta] Respuesta correcta. Aciertos:", aciertos);
     } else {
         resultadoDiv.textContent = `❌ Incorrecto. La respuesta correcta era: ${correcta}`;
         resultadoDiv.style.color = 'red';
+        console.log("[verificarRespuesta] Respuesta incorrecta");
     }
     document.querySelectorAll('.opcion').forEach(o => o.style.pointerEvents = 'none');
     document.getElementById('siguiente').style.display = 'inline-block';
