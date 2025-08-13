@@ -90,7 +90,7 @@ function parsearTexto(texto) {
         console.log("[parsearTexto] Respuestas correctas extraídas:", respuestasCorrectas);
     }
 
-    let partes = texto.split(/\n\s*\n/).filter(l => l.trim() !== '');
+    let partes = texto.match(/.*?\nA\..*?\nB\..*?\nC\..*?\nD\..*?(?=\n\d+\.|$)/gs) || [];
     let preguntasFiltradas = [];
 
     for (let bloque of partes) {
