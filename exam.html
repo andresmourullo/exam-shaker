@@ -91,17 +91,17 @@ function parsearTexto(texto) {
     }
 
     console.log("[parsearTexto] Dividiendo preguntas por línea que empieza con D) ");
-    let partes = texto.split(/(?<=D\)\s.*\n)/).map(p => p.trim()).filter(p => p !== '');
+    let partes = texto.split(/(?<=D[\)\.]\s.*\r?\n)/).map(p => p.trim()).filter(p => p !== '');
     console.log("[parsearTexto] Total bloques encontrados:", partes.length);
     let preguntasFiltradas = [];
 
     for (let bloque of partes) {
         let lineas = bloque.split('\n').filter(l => l.trim() !== '');
         if (lineas.length >= 5 &&
-            lineas[1].startsWith('A.') &&
-            lineas[2].startsWith('B.') &&
-            lineas[3].startsWith('C.') &&
-            lineas[4].startsWith('D.')
+            (lineas[1].startsWith('A)') || lineas[1].startsWith('A.')) &&
+            (lineas[2].startsWith('B)') || lineas[2].startsWith('B.')) &&
+            (lineas[3].startsWith('C)') || lineas[3].startsWith('C.')) &&
+            (lineas[4].startsWith('D)') || lineas[4].startsWith('D.'))
         ) {
             preguntasFiltradas.push(bloque);
         } else {
